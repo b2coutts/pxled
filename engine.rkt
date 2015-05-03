@@ -12,9 +12,10 @@
   (match-define (state cvs width height zoom filename x y bmp-dc show-cursor? brushes curbrush
                        undos cmd err cfg) st)
   (define code (send ke get-key-code))
+  (define ctrl (send ke get-control-down))
   ;(printf "DEBUG: code is: ~s\n" code)
   (cond
-    ;; TODO: implement some fancy features like arrow keys and ^W
+    ;; TODO: allow the user to move the cursor
     [cmd (match code
       ['escape (set-state-cmd! st #f)
                (draw-cmd st)]
@@ -28,8 +29,15 @@
                         (draw-cmd st)]
           [else (set-state-cmd! st #f)
                 (draw-cmd st)])]
-      [(? char?) (set-state-cmd! st (string-append cmd (~a code)))
-                 (draw-cmd st)]
+      [(? char?) (cond
+        [ctrl (match code
+          [#\w (set-state-cmd! st (string-join (drop-right (string-split cmd " ") 1)))]
+          [#\u (set-state-cmd! st "")]
+          [#\c (set-state-cmd! st #f)]
+          [_ (void)])
+          (draw-cmd st)]
+        [else (set-state-cmd! st (string-append cmd (~a code)))
+              (draw-cmd st)])]
       [_ (void)])]
     [(equal? code 'escape) (set-state-err! st #f)
                            (draw-cmd st)]
