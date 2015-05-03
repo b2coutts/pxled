@@ -14,8 +14,10 @@
 (define red (color 255 0 0 255))
 
 ;; some constants for the UI
+(define info/cmd-font-size 14)
+(define info/cmd-height (image-height (text/font "l" info/cmd-font-size "white" "courier" 'modern
+                                                 'normal 'normal #f)))
 (define min-width 300) ;; make sure all usages fit in this width; maybe at least 80 characters?
-(define info/cmd-height 14)
 (define cmd-bg black)
 (define cmd-fg white)
 (define err-fg red)
@@ -27,7 +29,7 @@
   (-> state? string? color? image?)
   (underlay/align "left" "top"
     (rectangle (send (state-cvs st) get-width) info/cmd-height "solid" cmd-bg)
-    (text/font str info/cmd-height col "Courier" 'modern 'normal 'normal #f)))
+    (text/font str info/cmd-font-size col "Courier" 'modern 'normal 'normal #f)))
 
 (define/contract (getcol st x y)
   (-> state? integer? integer? color?)
@@ -82,7 +84,7 @@
   (define dc (send (state-cvs st) get-dc))
   (define ypos (+ (img-disp-height st) info/cmd-height 1)) ;; TODO: off-by-one?
   (cond
-    [cmd (render-image (texttt st cmd cmd-fg) dc 1 ypos)]
+    [cmd (render-image (texttt st (string-append ":" cmd) cmd-fg) dc 1 ypos)]
     [err (render-image (texttt st err err-fg) dc 1 ypos)]
     ;; TODO: add a * for dirty file
     [else (render-image (texttt st (format "~a" (state-filename st)) fname-fg) dc 1 ypos)]))
