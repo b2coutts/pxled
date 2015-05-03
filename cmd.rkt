@@ -75,6 +75,21 @@
   (send (send (state-cvs st) get-dc) clear)
   (draw-all st))
 
+;; provides a usage string for the given command, produces false if no such command exists
+(define/contract (get-usage cmd)
+  (-> any/c string?)
+  (define in (curry member cmd))
+  (define msg
+    (cond
+      [(in '(amove amv)) "(x : int) (y : int). Move cursor to (x,y)."]
+      [(in '(move mv)) "(x : int) (y : int). Move cursor to (x,y)."]
+      [(in '(draw dr)) "[x : int] [y : int] [col : color]. Change color at (x,y) to col."]
+      [(in '(fl flood)) "[x : int] [y : int] [col : color]. Flood with col, starting at (x,y)."]
+      [(in '(save sv w))  "[fname : string]. Save the current image to fname."]
+      [(in '(zoom zo)) "(z : int). Display pixels with a box z px wide."]
+      [else #f]))
+  (if msg (format "Usage: ~a ~a" cmd msg) #f))
+
 ;; attempts to execute a user command; returns #f on success, or an error string on error
 (define/contract (exec-cmd! st cmdstr)
   (-> state? string? (or/c string? #f))
@@ -86,18 +101,17 @@
     [else (string-append "(" cmdstr ")")]))
   (with-handlers ([exn:fail:read? (lambda (e) "Syntax error.")])
     (define ast (with-input-from-string fixstr (thunk (read))))
+    (define usg (get-usage (first ast)))
     (match ast
       ;; absolute move
       [(list (or 'amove 'amv) (? integer? a) (? integer? b))
         (mv-cursor! st a b) #f]
-      [(cons (or 'amove 'amv) _)
-        "Usage: amove (x : int) (y : int). Move cursor to (x,y)."]
+      [(cons (or 'amove 'amv) _) usg]
 
       ;; relative move
       [(list (or 'move 'mv) (? integer? a) (? integer? b))
         (mv-cursor! st (+ x a) (+ y b)) #f]
-      [(cons (or 'move 'mv) _)
-        "Usage: move (x : int) (y : int). Move cursor to (x,y)."]
+      [(cons (or 'move 'mv) _) usg]
 
       ;; draw
       [(cons (or 'draw 'dr 'flood 'fl) args)
@@ -111,7 +125,7 @@
         (define ccol (make-object color%))
         (send bmp-dc get-pixel a b ccol)
         (cond
-          [(not a) "Usage: draw [x : int] [y : int] [col : color]. Change color at (x,y) to col."]
+          [(not a) usg]
           ;; single point draw
           [(member (first ast) '(draw dr)) (send bmp-dc set-pixel a b (cc col))
                                            (draw-pixel st a b)
@@ -125,7 +139,7 @@
       [(cons (or 'save 'sv 'w) args) (match args
         ['() (save-img st filename)]
         [(list (? string? fname)) (save-img st fname)]
-        [_ "Usage: save [fname : string]. Save the current image to fname."])]
+        [_ usg])]
 
       ;; zoom
       [(cons (or 'zoom 'zo) args) (match args
@@ -134,7 +148,7 @@
                   (zoom! st (- zoom 1)))
                 #f]
         [(list (? exact-positive-integer? i)) (zoom! st i) #f]
-        [_ "Usage: zoom [z : int]. Display pixels with a box z px wide."])]
+        [_ usg])]
       
       ;; command not found
       [(list nm) (format "Command not found: ~a" nm)]
