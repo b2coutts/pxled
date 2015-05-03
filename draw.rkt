@@ -45,7 +45,6 @@
   (-> state? integer? integer? void?)
   (define col (getcol st x y))
   (define img (rectangle (state-zoom st) (state-zoom st) "solid" col))
-  ;; TODO: off-by-one error with last 2 args to render-image?
   (render-image img (send (state-cvs st) get-dc)
                     (* x (state-zoom st))
                     (+ (* y (state-zoom st)) info/cmd-height)))
@@ -57,7 +56,6 @@
   (color (- 255 r) (- 255 g) (- 255 b) a))
 
 ;; draws the cursor
-;; TODO: make this look nicer
 (define/contract (draw-cursor st)
   (-> state? void?)
   (define-values (cvs zoom x y) (values (state-cvs st) (state-zoom st) (state-x st) (state-y st)))
@@ -85,15 +83,14 @@
   (-> state? void?)
   (define-values (err cmd) (values (state-err st) (state-cmd st)))
   (define dc (send (state-cvs st) get-dc))
-  (define ypos (+ (img-disp-height st) info/cmd-height 1)) ;; TODO: off-by-one?
+  (define ypos (+ (img-disp-height st) info/cmd-height 1))
   (cond
-    [cmd (render-image (texttt st (string-append ":" cmd) cmd-fg) dc 1 ypos)]
+    [cmd (render-image (texttt st (string-append ":" cmd "_") cmd-fg) dc 1 ypos)]
     [err (render-image (texttt st err err-fg) dc 1 ypos)]
     ;; TODO: add a * for dirty file
     [else (render-image (texttt st (format "~a" (state-filename st)) fname-fg) dc 1 ypos)]))
 
 ;; produces the info string, to be drawn at the top of the string
-;; TODO: colour it
 (define/contract (get-info st)
   (-> state? string?)
   (match-define (state cvs width height zoom filename x y bmp-dc show-cursor? brushes curbrush

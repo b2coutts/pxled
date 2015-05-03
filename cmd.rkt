@@ -124,7 +124,7 @@
 ;; attempts to execute a user command; returns #f on success, or an error string on error
 (define/contract (exec-cmd! st cmdstr)
   (-> state? string? (or/c string? #f))
-  (printf "DEBUG: exec-cmd!: cmdstr is: ~s\n" cmdstr)
+  ;(printf "DEBUG: exec-cmd!: cmdstr is: ~s\n" cmdstr)
   (match-define (state cvs width height zoom filename x y bmp-dc show-cursor? brushes curbrush
                        undos cmd err cfg) st)
   (define brush-col (vector-ref brushes curbrush))
@@ -205,7 +205,6 @@
           #f]
         [_ usg])]
 
-      
       ;; command not found
       [(list nm) (format "Command not found: ~a" nm)]
       [_ (format "Invalid command: ~a" ast)])))
