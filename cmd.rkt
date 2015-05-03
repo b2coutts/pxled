@@ -24,14 +24,6 @@
   (match-define (color r g b a) col)
   (make-object color% r g b (/ a 255)))
 
-;; parses a color from an AST, or returns #f for an invalid AST
-(define/contract (ast->color ast)
-  (-> any/c (or/c color? #f))
-  (match ast
-    [(list 'color (? byte? r) (? byte? g) (? byte? b) (? byte? a)) (color r g b a)]
-    [(list 'color (? byte? r) (? byte? g) (? byte? b)) (color r g b 255)]
-    [_ #f]))
-
 ;; moves the cursor to the given spot, snapping it to the canvas if needed
 (define/contract (mv-cursor! st x y)
   (-> state? integer? integer? void?)
@@ -43,7 +35,8 @@
   (draw-pixel st (state-x st) (state-y st))
   (set-state-x! st (snap-int x 0 (- (state-width st) 1)))
   (set-state-y! st (snap-int y 0 (- (state-height st) 1)))
-  (draw-cursor st))
+  (draw-cursor st)
+  (draw-info st))
 
 ;; flood-fills fcol over the surrounding area, while the color it's covering is ccol
 (define/contract (flood-fill! st fcol ccol x y)
@@ -77,7 +70,7 @@
 
 ;; provides a usage string for the given command, produces false if no such command exists
 (define/contract (get-usage cmd)
-  (-> any/c (or/c string? #f))
+  (-> any/c string?)
   (define in (curry member cmd))
   (define msg
     (cond
@@ -91,11 +84,30 @@
       [(in '(b bl blu blue))  "(b : byte). Set the blue color component to b."]
       [(in '(g gr gre gree green))  "(b : byte). Set the green color component to b."]
       [(in '(a al alp alph alpha))  "(b : byte). Set the alpha component to b."]
+      [(in '(co color)) "(col : color). Set the color of the current brush."]
       [else #f]))
-  (if msg (format "Usage: ~a ~a" cmd msg) #f))
+  (if msg (format "Usage: ~a ~a" cmd msg)
+          (format "Command not found: ~a" cmd)))
 
 ;; converts a hex string to a number
 (define hex->num (curryr string->number 16))
+
+;; converts an ast to a color, or #f if the ast is not a valid color
+(define/contract (ast->color ast)
+  (-> any/c (or/c color? #f))
+  (match (if (string? ast) (string-length ast) -1)
+    [6 (match (list (substring ast 0 2) (substring ast 2 4) (substring ast 4 6))
+      [(list (app hex->num (? integer? r)) (app hex->num (? integer? g))
+             (app hex->num (? integer? b)))
+        (color r g b 255)]
+      [_ #f])]
+    [8 (match (list (substring ast 0 2) (substring ast 2 4)
+                    (substring ast 4 6) (substring ast 6 8))
+      [(list (app hex->num (? integer? r)) (app hex->num (? integer? g))
+             (app hex->num (? integer? b)) (app hex->num (? integer? a)))
+        (color r g b a)]
+      [_ #f])]
+    [_ #f]))
 
 ;; attempts to execute a user command; returns #f on success, or an error string on error
 (define/contract (exec-cmd! st cmdstr)
@@ -103,6 +115,7 @@
   (printf "DEBUG: exec-cmd!: cmdstr is: ~s\n" cmdstr)
   (match-define (state cvs width height zoom filename x y bmp-dc show-cursor? brushes curbrush
                        undos cmd err cfg) st)
+  (define brush-col (vector-ref brushes curbrush))
   (define fixstr (cond
     [(or (< (string-length cmdstr) 1) (equal? (substring cmdstr 0 1) "(")) cmdstr]
     [else (string-append "(" cmdstr ")")]))
@@ -123,9 +136,9 @@
       ;; draw
       [(cons (or 'draw 'dr 'flood 'fl) args)
         (define-values (a b col) (match args
-          ['() (values x y (vector-ref brushes curbrush))]
-          [(list (? integer? a)) (values a y (vector-ref brushes curbrush))]
-          [(list (? integer? a) (? integer? b)) (values a b (vector-ref brushes curbrush))]
+          ['() (values x y brush-col)]
+          [(list (? integer? a)) (values a y brush-col)]
+          [(list (? integer? a) (? integer? b)) (values a b brush-col)]
           [(list (? integer? a) (? integer? b) (app ast->color (? color? col))) (values a b col)]
           [_ (values #f #f #f)]))
 
@@ -160,31 +173,26 @@
       [(cons (and (or 'r 're 'red 'b 'bl 'blu 'blue 'g 'gr 'gre 'gree 'green
                       'a 'al 'alp 'alph 'alpha) col) args) (match args
         [(list (? byte? byte))
-          (match-define (color r g b a) (getcol st x y))
+          (match-define (color r g b a) brush-col)
           (vector-set! brushes curbrush (color
             (if (member col '(r re red)) byte r)
-            (if (member col '(b bl blu blue)) byte g)
-            (if (member col '(g gr gre gree green)) byte b)
+            (if (member col '(g gr gre gree green)) byte g)
+            (if (member col '(b bl blu blue)) byte b)
             (if (member col '(a al alp alph alpha)) byte a)))
+          (draw-info st)
+          (draw-cursor st)
           #f]
         [else usg])]
 
       ;; adjust all colours, simultaneously
       [(cons (or 'co 'color) args) (match args
-        [(list (? string? str)) (match (string-length str)
-          [6 (match (list (substring str 0 2) (substring str 2 4) (substring str 4 6))
-            [(list (app hex->num (? integer? r)) (app hex->num (? integer? g))
-                   (app hex->num (? integer? b)))
-              (vector-set! brushes curbrush (color r g b 255))]
-            [_ usg])]
-          [8 (match (list (substring str 0 2) (substring str 2 4)
-                          (substring str 4 6) (substring str 6 8))
-            [(list (app hex->num (? integer? r)) (app hex->num (? integer? g))
-                   (app hex->num (? integer? b)) (app hex->num (? integer? a)))
-              (vector-set! brushes curbrush (color r g b a))]
-            [_ usg])]
-          [_ usg])]
+        [(list (app ast->color (? color? col)))
+          (vector-set! brushes curbrush col)
+          (draw-info st)
+          (draw-cursor st)
+          #f]
         [_ usg])]
+
       
       ;; command not found
       [(list nm) (format "Command not found: ~a" nm)]

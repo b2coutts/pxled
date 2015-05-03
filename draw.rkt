@@ -104,7 +104,7 @@
 ;; display a byte in two-digit hex notation
 (define/contract (show-byte b)
   (-> byte? string?)
-  (string-append (if (< b 16) "0" "") (format "~x" b)))
+  (string-upcase (string-append (if (< b 16) "0" "") (format "~x" b))))
 
 ;; produces a list of pieces of the info string, with their colours
 (define/contract (mk-infos st)
