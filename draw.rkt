@@ -12,6 +12,8 @@
 (define black (color 0 0 0 255))
 (define white (color 255 255 255 255))
 (define red (color 255 0 0 255))
+(define green (color 0 255 0 255))
+(define blue (color 0 0 255 255))
 
 ;; some constants for the UI
 (define info/cmd-font-size 14)
@@ -89,11 +91,39 @@
     ;; TODO: add a * for dirty file
     [else (render-image (texttt st (format "~a" (state-filename st)) fname-fg) dc 1 ypos)]))
 
+;; produces the info string, to be drawn at the top of the string
+;; TODO: colour it
+(define/contract (get-info st)
+  (-> state? string?)
+  (match-define (state cvs width height zoom filename x y bmp-dc show-cursor? brushes curbrush
+                       undos cmd err cfg) st)
+  (match-define (color r g b a) (vector-ref brushes curbrush))
+  (format "[~a,~a]   ~x~x~x (A=~x)" x y r g b a))
+
+;; display a byte in two-digit hex notation
+(define/contract (show-byte b)
+  (-> byte? string?)
+  (string-append (if (< b 16) "0" "") (format "~x" b)))
+
+;; produces a list of pieces of the info string, with their colours
+(define/contract (mk-infos st)
+  (-> state? (listof (cons/c string? color?)))
+  (match-define (state cvs width height zoom filename x y bmp-dc show-cursor? brushes curbrush
+                       undos cmd err cfg) st)
+  (match-define (color r g b a) (vector-ref brushes curbrush))
+  (list (cons (format "(~a,~a)   #" x y) white)
+        (cons (show-byte r) red)
+        (cons (show-byte g) green)
+        (cons (show-byte b) blue)
+        (cons (format " (α=~a)" (show-byte a)) white)))
+
 ;; draws the info line at the top
 (define/contract (draw-info st)
   (-> state? void?)
+  (define (mktxt strcol) (text/font (car strcol) info/cmd-font-size (cdr strcol) "Courier" 'modern
+                                    'normal 'normal #f))
   (define img (overlay/align "left" "top"
-                (texttt st (get-info st) white)
+                (apply beside (map mktxt (mk-infos st)))
                 (rectangle (send (state-cvs st) get-width) info/cmd-height "solid" black)))
   (render-image img (send (state-cvs st) get-dc) 0 0))
 

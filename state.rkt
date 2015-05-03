@@ -1,6 +1,6 @@
 #lang racket
 
-(provide (struct-out state) undo? get-info)
+(provide (struct-out state) undo?)
 
 (require racket/gui/base
          (except-in 2htdp/image make-color make-pen)
@@ -29,17 +29,3 @@
   [err (or/c string? #f)] ;; error message for user
   [cfg hash?] ;; various misc. config options
 ) #:mutable #:transparent)
-
-;; display a byte in two-digit hex notation
-(define/contract (show-byte b)
-  (-> byte? string?)
-  (string-append (if (< b 16) "0" "") (format "~x" b)))
-
-;; produces the info string, to be drawn at the top of the string
-;; TODO: colour it
-(define/contract (get-info st)
-  (-> state? string?)
-  (match-define (state cvs width height zoom filename x y bmp-dc show-cursor? brushes curbrush
-                       undos cmd err cfg) st)
-  (match-define (color r g b a) (vector-ref brushes curbrush))
-  (format "[~a,~a]   ~x~x~x (A=~x)" x y r g b a))
