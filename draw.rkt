@@ -54,7 +54,7 @@
 (define/contract (invert-color col)
   (-> color? color?)
   (match-define (color r g b a) col)
-  (color (modulo (- r) 255) (modulo (- g) 255) (modulo (- b) 255) (modulo (- a) 255)))
+  (color (- 255 r) (- 255 g) (- 255 b) a))
 
 ;; draws the cursor
 ;; TODO: make this look nicer
