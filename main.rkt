@@ -19,11 +19,14 @@
                     (handle-ke! st ke)))
                  [parent frm]
                  [paint-callback (lambda (cvs dc) (draw-all st))]))
+
+(define bgcolor (make-object color% 30 30 30 1.0))
                                   
 (define-values (width height zoom filename) (values 10 10 16 "foo.png"))
 (send cvs min-client-width width)
 (send cvs min-client-width height)
-(send cvs set-canvas-background (make-object color% 30 30 30 1.0))
+(send cvs set-canvas-background bgcolor)
+(send (send cvs get-dc) set-background bgcolor)
 (send frm show #t)
 
 (define bmp (make-object bitmap% width height #f #t))

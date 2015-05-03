@@ -28,6 +28,8 @@
     [`(#\l #f) "move 1 0"]
     [`(#\L ,_) "move 5 0"]
     [`(#\l #t) "move 10 0"]
+    [`(#\z #f) "zoom in"]
+    [`(#\Z #f) "zoom out"]
     [`(#\d ,_) "draw"]
     [`(#\D ,_) "flood"]
     ;[`(#\s ,_) "save"]

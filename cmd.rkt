@@ -68,6 +68,13 @@
   (-> state? path-string? (or/c string? #f))
   "TODO: implement saving")
 
+;; change the zoom level
+(define/contract (zoom! st lvl)
+  (-> state? integer? void?)
+  (set-state-zoom! st lvl)
+  (send (send (state-cvs st) get-dc) clear)
+  (draw-all st))
+
 ;; attempts to execute a user command; returns #f on success, or an error string on error
 (define/contract (exec-cmd! st cmdstr)
   (-> state? string? (or/c string? #f))
@@ -119,6 +126,15 @@
         ['() (save-img st filename)]
         [(list (? string? fname)) (save-img st fname)]
         [_ "Usage: save [fname : string]. Save the current image to fname."])]
+
+      ;; zoom
+      [(cons (or 'zoom 'zo) args) (match args
+        ['(in) (zoom! st (+ zoom 1)) #f]
+        ['(out) (when (> zoom 1)
+                  (zoom! st (- zoom 1)))
+                #f]
+        [(list (? exact-positive-integer? i)) (zoom! st i) #f]
+        [_ "Usage: zoom [z : int]. Display pixels with a box z px wide."])]
       
       ;; command not found
       [(list nm) (format "Command not found: ~a" nm)]
