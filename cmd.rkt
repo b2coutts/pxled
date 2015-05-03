@@ -77,7 +77,7 @@
 
 ;; provides a usage string for the given command, produces false if no such command exists
 (define/contract (get-usage cmd)
-  (-> any/c string?)
+  (-> any/c (or/c string? #f))
   (define in (curry member cmd))
   (define msg
     (cond
@@ -87,8 +87,15 @@
       [(in '(fl flood)) "[x : int] [y : int] [col : color]. Flood with col, starting at (x,y)."]
       [(in '(save sv w))  "[fname : string]. Save the current image to fname."]
       [(in '(zoom zo)) "(z : int). Display pixels with a box z px wide."]
+      [(in '(r re red))  "(b : byte). Set the red color component to b."]
+      [(in '(b bl blu blue))  "(b : byte). Set the blue color component to b."]
+      [(in '(g gr gre gree green))  "(b : byte). Set the green color component to b."]
+      [(in '(a al alp alph alpha))  "(b : byte). Set the alpha component to b."]
       [else #f]))
   (if msg (format "Usage: ~a ~a" cmd msg) #f))
+
+;; converts a hex string to a number
+(define hex->num (curryr string->number 16))
 
 ;; attempts to execute a user command; returns #f on success, or an error string on error
 (define/contract (exec-cmd! st cmdstr)
@@ -122,8 +129,7 @@
           [(list (? integer? a) (? integer? b) (app ast->color (? color? col))) (values a b col)]
           [_ (values #f #f #f)]))
 
-        (define ccol (make-object color%))
-        (send bmp-dc get-pixel a b ccol)
+        (define ccol (if a (getcol st a b) (void)))
         (cond
           [(not a) usg]
           ;; single point draw
@@ -148,6 +154,36 @@
                   (zoom! st (- zoom 1)))
                 #f]
         [(list (? exact-positive-integer? i)) (zoom! st i) #f]
+        [_ usg])]
+
+      ;; adjust individual colours
+      [(cons (and (or 'r 're 'red 'b 'bl 'blu 'blue 'g 'gr 'gre 'gree 'green
+                      'a 'al 'alp 'alph 'alpha) col) args) (match args
+        [(list (? byte? byte))
+          (match-define (color r g b a) (getcol st x y))
+          (vector-set! brushes curbrush (color
+            (if (member col '(r re red)) byte r)
+            (if (member col '(b bl blu blue)) byte g)
+            (if (member col '(g gr gre gree green)) byte b)
+            (if (member col '(a al alp alph alpha)) byte a)))
+          #f]
+        [else usg])]
+
+      ;; adjust all colours, simultaneously
+      [(cons (or 'co 'color) args) (match args
+        [(list (? string? str)) (match (string-length str)
+          [6 (match (list (substring str 0 2) (substring str 2 4) (substring str 4 6))
+            [(list (app hex->num (? integer? r)) (app hex->num (? integer? g))
+                   (app hex->num (? integer? b)))
+              (vector-set! brushes curbrush (color r g b 255))]
+            [_ usg])]
+          [8 (match (list (substring str 0 2) (substring str 2 4)
+                          (substring str 4 6) (substring str 6 8))
+            [(list (app hex->num (? integer? r)) (app hex->num (? integer? g))
+                   (app hex->num (? integer? b)) (app hex->num (? integer? a)))
+              (vector-set! brushes curbrush (color r g b a))]
+            [_ usg])]
+          [_ usg])]
         [_ usg])]
       
       ;; command not found

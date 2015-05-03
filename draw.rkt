@@ -1,7 +1,7 @@
 #lang racket
 ;; contains functions for drawing various UI pieces
 
-(provide draw-pixel draw-cursor draw-cmd draw-info draw-all)
+(provide getcol draw-pixel draw-cursor draw-cmd draw-info draw-all)
 
 (require "state.rkt")
 
@@ -37,7 +37,8 @@
   (-> state? integer? integer? color?)
   (define col (make-object color%))
   (send (state-bmp-dc st) get-pixel x y col)
-  (color (send col red) (send col green) (send col blue) (* (floor (send col alpha)) 255)))
+  (color (send col red) (send col green) (send col blue)
+         (* (inexact->exact (floor (send col alpha))) 255)))
 
 ;; TODO: deal with transparency, maybe by overlaying the solid rectangle over a checker pattern
 (define/contract (draw-pixel st x y)
