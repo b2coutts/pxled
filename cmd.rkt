@@ -42,6 +42,7 @@
   (set-state-x! st (snap-int x 0 (- (state-width st) 1)))
   (set-state-y! st (snap-int y 0 (- (state-height st) 1)))
   (draw-cursor st)
+  (draw-cmd st)
   (draw-info st))
 
 ;; flood-fills fcol over the surrounding area, while the color it's covering is ccol
@@ -67,10 +68,11 @@
         [else '()])]
     [else '()]))
 
-;; save the file; return #f on success, or an error string on failure
+;; save the file
 (define/contract (save-img st filename)
-  (-> state? path-string? (or/c string? #f))
-  "TODO: implement saving")
+  (-> state? path-string? void?)
+  (send (send (state-bmp-dc st) get-bitmap) save-file filename 'png)
+  (hash-set! (state-misc st) 'dirty #f))
 
 ;; change the zoom level
 (define/contract (zoom! st lvl)
@@ -153,6 +155,7 @@
   (printf "DEBUG: exec-cmd!: cmdstr is: ~s\n" cmdstr)
   (match-define (state cvs width height zoom filename x y bmp-dc show-cursor? brushes curbrush
                        undos cmd err misc) st)
+  (printf "dirty is ~a\n" (hash-ref misc 'dirty))
   (define brush-col (vector-ref brushes curbrush))
   (define fixstr (cond
     [(or (< (string-length cmdstr) 1) (equal? (substring cmdstr 0 1) "(")) cmdstr]
@@ -187,20 +190,24 @@
           [(member (first ast) '(draw dr))
             (set-state-undos! st (cons (list 'single a b ccol) undos))
             (send bmp-dc set-pixel a b (cc col))
+            (hash-set! misc 'dirty #t)
             (draw-pixel st a b)
             (draw-cursor st)
+            (draw-cmd st)
             #f]
           ;; flood-fill
           [(equal? ccol col) #f]
           [else (define xys (flood-fill! st col ccol a b))
+                (hash-set! misc 'dirty #t)
                 (set-state-undos! st (cons (list 'flood-fill (map car xys) (map cdr xys) ccol)
                                            undos))
+                (draw-cmd st)
                 #f])]
       
       ;; save
       [(cons (or 'save 'sv 'w) args) (match args
-        ['() (save-img st filename)]
-        [(list (? string? fname)) (save-img st fname)]
+        ['() (save-img st filename) #f]
+        [(list (? string? fname)) (save-img st fname) #f]
         [_ usg])]
 
       ;; zoom

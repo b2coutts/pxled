@@ -84,11 +84,12 @@
   (define-values (err cmd) (values (state-err st) (state-cmd st)))
   (define dc (send (state-cvs st) get-dc))
   (define ypos (+ (img-disp-height st) info/cmd-height 1))
+  (define modstr (if (hash-ref (state-misc st) 'dirty) "*" ""))
   (cond
     [cmd (render-image (texttt st (string-append ":" cmd "_") cmd-fg) dc 1 ypos)]
     [err (render-image (texttt st err err-fg) dc 1 ypos)]
-    ;; TODO: add a * for dirty file
-    [else (render-image (texttt st (format "~a" (state-filename st)) fname-fg) dc 1 ypos)]))
+    [else (render-image (texttt st (format "~a~a" (state-filename st) modstr)
+                                fname-fg) dc 1 ypos)]))
 
 ;; produces the info string, to be drawn at the top of the string
 (define/contract (get-info st)
