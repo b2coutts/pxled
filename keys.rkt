@@ -11,7 +11,7 @@
   (-> state? (is-a?/c key-event%) (or/c string? #f))
   (hash/c char? string?)
   (match-define (state cvs width height zoom filename x y bmp-dc show-cursor? brushes curbrush
-                       undos cmd err cfg) st)
+                       undos cmd err misc) st)
   (define col (vector-ref brushes curbrush))
   (define code (send ke get-key-code))
   (define ctrl (send ke get-control-down))
@@ -32,5 +32,6 @@
     [`(#\Z #f) "zoom out"]
     [`(#\d ,_) "draw"]
     [`(#\D ,_) "flood"]
+    [`(#\c #f) "toggle-cursor"]
     ;[`(#\s ,_) "save"]
     [_ #f]))

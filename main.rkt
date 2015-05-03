@@ -41,6 +41,11 @@
 (define (conv col) (color (send col red) (send col green) (send col blue) (send col alpha)))
 (printf "bmp-dc at (2,2) is ~a\n" (conv tmpcol))
 
+(define misc (make-hash '(
+  [show-cursor #t]
+  [dirty #t]
+)))
+
 ;; TODO: unhardcode this stuff
 (set! st (state
   cvs
@@ -57,7 +62,7 @@
   '()
   #f
   #f
-  (make-hash '([show-cursor #t]))
+  misc
 ))
 
 (send cvs on-paint)

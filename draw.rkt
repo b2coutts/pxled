@@ -63,7 +63,7 @@
   (define empty-rec (rectangle zoom zoom "solid" (color 0 0 0 0)))
   (define radius (floor (* zoom 0.3)))
   (define cursor-img (cond
-    [(not (hash-ref (state-cfg st) 'show-cursor)) empty-rec]
+    [(not (hash-ref (state-misc st) 'show-cursor)) empty-rec]
     [(< zoom 4) (rectangle zoom zoom "solid" col)]
     [(<= 4 zoom 9) (overlay (circle radius "solid" col) empty-rec)]
     [else (overlay (circle (- radius 1) "solid" col)
@@ -94,7 +94,7 @@
 (define/contract (get-info st)
   (-> state? string?)
   (match-define (state cvs width height zoom filename x y bmp-dc show-cursor? brushes curbrush
-                       undos cmd err cfg) st)
+                       undos cmd err misc) st)
   (match-define (color r g b a) (vector-ref brushes curbrush))
   (format "[~a,~a]   ~x~x~x (A=~x)" x y r g b a))
 
@@ -107,7 +107,7 @@
 (define/contract (mk-infos st)
   (-> state? (listof (cons/c string? color?)))
   (match-define (state cvs width height zoom filename x y bmp-dc show-cursor? brushes curbrush
-                       undos cmd err cfg) st)
+                       undos cmd err misc) st)
   (match-define (color r g b a) (vector-ref brushes curbrush))
   (list (cons (format "(~a,~a)   #" x y) white)
         (cons (show-byte r) red)

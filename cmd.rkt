@@ -91,6 +91,7 @@
       [(in '(g gr gre gree green))  "(b : byte). Set the green color component to b."]
       [(in '(a al alp alph alpha))  "(b : byte). Set the alpha component to b."]
       [(in '(co color)) "(col : color). Set the color of the current brush."]
+      [(in '(tc toggle-cursor)) "[v : boolean]. Toggle visibility of the cursor."]
       [else #f]))
   (if msg (format "Usage: ~a ~a" cmd msg)
           (format "Command not found: ~a" cmd)))
@@ -124,9 +125,9 @@
 ;; attempts to execute a user command; returns #f on success, or an error string on error
 (define/contract (exec-cmd! st cmdstr)
   (-> state? string? (or/c string? #f))
-  ;(printf "DEBUG: exec-cmd!: cmdstr is: ~s\n" cmdstr)
+  (printf "DEBUG: exec-cmd!: cmdstr is: ~s\n" cmdstr)
   (match-define (state cvs width height zoom filename x y bmp-dc show-cursor? brushes curbrush
-                       undos cmd err cfg) st)
+                       undos cmd err misc) st)
   (define brush-col (vector-ref brushes curbrush))
   (define fixstr (cond
     [(or (< (string-length cmdstr) 1) (equal? (substring cmdstr 0 1) "(")) cmdstr]
@@ -203,6 +204,18 @@
           (draw-info st)
           (draw-cursor st)
           #f]
+        [_ usg])]
+
+      ;; set cursor visibility
+      [(cons (or 'tc 'toggle-cursor) args) (match args
+        ['() (hash-set! misc 'show-cursor (not (hash-ref misc 'show-cursor)))
+             (draw-pixel st x y)
+             (draw-cursor st)
+             #f]
+        [(list (? boolean? bool)) (hash-set! misc 'show-cursor bool)
+                                  (draw-pixel st x y)
+                                  (draw-cursor st)
+                                  #f]
         [_ usg])]
 
       ;; command not found
