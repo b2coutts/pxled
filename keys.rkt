@@ -33,5 +33,6 @@
     [`(#\d ,_) "draw"]
     [`(#\D ,_) "flood"]
     [`(#\c #f) "toggle-cursor"]
+    [`(#\u #f) "undo"]
     ;[`(#\s ,_) "save"]
     [_ #f]))

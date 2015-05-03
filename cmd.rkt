@@ -45,22 +45,27 @@
   (draw-info st))
 
 ;; flood-fills fcol over the surrounding area, while the color it's covering is ccol
+;; returns a list of positions for undos
 (define/contract (flood-fill! st fcol ccol x y)
-  (-> state? color? color? integer? integer? void?)
-  (when (equal? fcol ccol)
-    (error "ERROR: flood-fill! given equal fcol and ccol!"))
-  (define pxcol (make-object color%))
-  (send (state-bmp-dc st) get-pixel x y pxcol)
-  (when (and (equal? pxcol ccol)
-             (<= 0 x (state-width st))
-             (<= 0 y (state-height st)))
-    (send (state-bmp-dc st) set-pixel x y (cc fcol))
-    (draw-pixel st x y)
-    (draw-cursor st)
-    (flood-fill! st fcol ccol (add1 x) y)
-    (flood-fill! st fcol ccol (sub1 x) y)
-    (flood-fill! st fcol ccol x (add1 y))
-    (flood-fill! st fcol ccol x (sub1 y))))
+  (-> state? color? color? integer? integer? (listof (cons/c integer? integer?)))
+  (cond
+    [(and (<= 0 x (state-width st))
+          (<= 0 y (state-height st)))
+      (define pxcol (getcol st x y))
+      (cond
+        [(equal? fcol ccol) (error "ERROR: flood-fill! given equal fcol and ccol!")]
+        [(equal? pxcol ccol)
+          (send (state-bmp-dc st) set-pixel x y (cc fcol))
+          (draw-pixel st x y)
+          (draw-cursor st)
+          (append
+            (list (cons x y))
+            (flood-fill! st fcol ccol (add1 x) y)
+            (flood-fill! st fcol ccol (sub1 x) y)
+            (flood-fill! st fcol ccol x (add1 y))
+            (flood-fill! st fcol ccol x (sub1 y)))]
+        [else '()])]
+    [else '()]))
 
 ;; save the file; return #f on success, or an error string on failure
 (define/contract (save-img st filename)
@@ -92,6 +97,7 @@
       [(in '(a al alp alph alpha))  "(b : byte). Set the alpha component to b."]
       [(in '(co color)) "(col : color). Set the color of the current brush."]
       [(in '(tc toggle-cursor)) "[v : boolean]. Toggle visibility of the cursor."]
+      [(in '(un undo)) "[n : int]. Undo last n actions."]
       [else #f]))
   (if msg (format "Usage: ~a ~a" cmd msg)
           (format "Command not found: ~a" cmd)))
@@ -121,6 +127,25 @@
           (color r g b a)]
         [_ #f])]
       [_ #f])]))
+
+;; undoes the last n actions
+(define/contract (undo! st n)
+  (-> state? exact-nonnegative-integer? void?)
+  (when (> n 0)
+    (match (state-undos st)
+      ['() (void)]
+      [(cons undo rst)
+        (define-values (x y) (match undo
+          [(list 'single x y col) (send (state-bmp-dc st) set-pixel x y (cc col))
+                                  (draw-pixel st x y)
+                                  (values x y)]
+          [(list 'flood-fill xs ys col) (for ([x xs] [y ys])
+                                          (send (state-bmp-dc st) set-pixel x y (cc col))
+                                          (draw-pixel st x y))
+                                        (values (first xs) (first ys))]))
+        (set-state-undos! st rst)
+        (mv-cursor! st x y)
+        (undo! st (- n 1))])))
 
 ;; attempts to execute a user command; returns #f on success, or an error string on error
 (define/contract (exec-cmd! st cmdstr)
@@ -159,13 +184,18 @@
         (cond
           [(not a) usg]
           ;; single point draw
-          [(member (first ast) '(draw dr)) (send bmp-dc set-pixel a b (cc col))
-                                           (draw-pixel st a b)
-                                           (draw-cursor st)
-                                           #f]
+          [(member (first ast) '(draw dr))
+            (set-state-undos! st (cons (list 'single a b ccol) undos))
+            (send bmp-dc set-pixel a b (cc col))
+            (draw-pixel st a b)
+            (draw-cursor st)
+            #f]
           ;; flood-fill
           [(equal? ccol col) #f]
-          [else (flood-fill! st col ccol a b) #f])]
+          [else (define xys (flood-fill! st col ccol a b))
+                (set-state-undos! st (cons (list 'flood-fill (map car xys) (map cdr xys) ccol)
+                                           undos))
+                #f])]
       
       ;; save
       [(cons (or 'save 'sv 'w) args) (match args
@@ -216,6 +246,12 @@
                                   (draw-pixel st x y)
                                   (draw-cursor st)
                                   #f]
+        [_ usg])]
+
+      ;; undo last draw action
+      [(cons (or 'un 'undo) args) (match args
+        ['() (undo! st 1) #f]
+        [(list (? exact-nonnegative-integer? n)) (undo! st n) #f]
         [_ usg])]
 
       ;; command not found
