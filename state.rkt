@@ -30,9 +30,16 @@
   [cfg hash?] ;; various misc. config options
 ) #:mutable #:transparent)
 
+;; display a byte in two-digit hex notation
+(define/contract (show-byte b)
+  (-> byte? string?)
+  (string-append (if (< b 16) "0" "") (format "~x" b)))
+
 ;; produces the info string, to be drawn at the top of the string
-;; TODO: implement this
-;; TODO: move it to draw.rkt?
+;; TODO: colour it
 (define/contract (get-info st)
   (-> state? string?)
-  "info string TODO")
+  (match-define (state cvs width height zoom filename x y bmp-dc show-cursor? brushes curbrush
+                       undos cmd err cfg) st)
+  (match-define (color r g b a) (vector-ref brushes curbrush))
+  (format "[~a,~a]   ~x~x~x (A=~x)" x y r g b a))
