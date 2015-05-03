@@ -27,6 +27,7 @@
   [undos (listof undo?)] ;; stack of undo actions to be done
   [cmd (or/c string? #f)] ;; user command handler
   [err (or/c string? #f)] ;; error message for user
+  [cfg hash?] ;; various misc. config options
 ) #:mutable #:transparent)
 
 ;; produces the info string, to be drawn at the top of the string

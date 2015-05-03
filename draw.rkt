@@ -45,13 +45,27 @@
                     (* x (state-zoom st))
                     (+ (* y (state-zoom st)) info/cmd-height)))
 
+;; invert the given color
+(define/contract (invert-color col)
+  (-> color? color?)
+  (match-define (color r g b a) col)
+  (color (modulo (- r) 255) (modulo (- g) 255) (modulo (- b) 255) (modulo (- a) 255)))
+
 ;; draws the cursor
 ;; TODO: make this look nicer
 (define/contract (draw-cursor st)
   (-> state? void?)
   (define-values (cvs zoom x y) (values (state-cvs st) (state-zoom st) (state-x st) (state-y st)))
-  (define lzm (sub1 zoom))
-  (define cursor-img (overlay (line lzm lzm "red") (line lzm (- lzm) "red")))
+  (define col (vector-ref (state-brushes st) (state-curbrush st)))
+  (define empty-rec (rectangle zoom zoom "solid" (color 0 0 0 0)))
+  (define radius (floor (* zoom 0.3)))
+  (define cursor-img (cond
+    [(not (hash-ref (state-cfg st) 'show-cursor)) empty-rec]
+    [(< zoom 4) (rectangle zoom zoom "solid" col)]
+    [(<= 4 zoom 9) (overlay (circle radius "solid" col) empty-rec)]
+    [else (overlay (circle (- radius 1) "solid" col)
+                   (circle radius "solid" (invert-color col))
+                   empty-rec)]))
   (render-image cursor-img (send cvs get-dc) (* x zoom) (+ (* y zoom) info/cmd-height)))
 
 ;; function which gets the height in pixels of the image display area

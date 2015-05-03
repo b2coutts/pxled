@@ -73,7 +73,7 @@
   (-> state? string? (or/c string? #f))
   (printf "DEBUG: exec-cmd!: cmdstr is: ~s\n" cmdstr)
   (match-define (state cvs width height zoom filename x y bmp-dc show-cursor? brushes curbrush
-                       undos cmd err) st)
+                       undos cmd err cfg) st)
   (define fixstr (cond
     [(or (< (string-length cmdstr) 1) (equal? (substring cmdstr 0 1) "(")) cmdstr]
     [else (string-append "(" cmdstr ")")]))

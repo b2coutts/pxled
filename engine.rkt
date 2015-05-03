@@ -10,7 +10,7 @@
 (define/contract (handle-ke! st ke)
   (-> state? (is-a?/c key-event%) void?)
   (match-define (state cvs width height zoom filename x y bmp-dc show-cursor? brushes curbrush
-                       undos cmd err) st)
+                       undos cmd err cfg) st)
   (define code (send ke get-key-code))
   ;(printf "DEBUG: state is: ~s\n" st)
   (printf "DEBUG: code is: ~s\n" code)

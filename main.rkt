@@ -54,6 +54,7 @@
   '()
   #f
   #f
+  (make-hash '([show-cursor #t]))
 ))
 
 (send cvs on-paint)
