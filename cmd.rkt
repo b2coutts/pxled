@@ -24,6 +24,12 @@
   (match-define (color r g b a) col)
   (make-object color% r g b (/ a 255)))
 
+;; converts a color% to a color?
+(define/contract (ccrev col)
+  (-> (is-a?/c color%) color?)
+  (color (send col red) (send col green) (send col blue)
+         (* (inexact->exact (floor (send col alpha))) 255)))
+
 ;; moves the cursor to the given spot, snapping it to the canvas if needed
 (define/contract (mv-cursor! st x y)
   (-> state? integer? integer? void?)
@@ -95,19 +101,25 @@
 ;; converts an ast to a color, or #f if the ast is not a valid color
 (define/contract (ast->color ast)
   (-> any/c (or/c color? #f))
-  (match (if (string? ast) (string-length ast) -1)
-    [6 (match (list (substring ast 0 2) (substring ast 2 4) (substring ast 4 6))
-      [(list (app hex->num (? integer? r)) (app hex->num (? integer? g))
-             (app hex->num (? integer? b)))
-        (color r g b 255)]
-      [_ #f])]
-    [8 (match (list (substring ast 0 2) (substring ast 2 4)
-                    (substring ast 4 6) (substring ast 6 8))
-      [(list (app hex->num (? integer? r)) (app hex->num (? integer? g))
-             (app hex->num (? integer? b)) (app hex->num (? integer? a)))
-        (color r g b a)]
-      [_ #f])]
-    [_ #f]))
+  (define str (cond
+    [(string? ast) ast]
+    [(symbol? ast) (symbol->string ast)]
+    [else ""]))
+  (cond
+    [(send the-color-database find-color str) (ccrev (send the-color-database find-color str))]
+    [else (match (string-length str)
+      [6 (match (list (substring str 0 2) (substring str 2 4) (substring str 4 6))
+        [(list (app hex->num (? integer? r)) (app hex->num (? integer? g))
+               (app hex->num (? integer? b)))
+          (color r g b 255)]
+        [_ #f])]
+      [8 (match (list (substring str 0 2) (substring str 2 4)
+                      (substring str 4 6) (substring str 6 8))
+        [(list (app hex->num (? integer? r)) (app hex->num (? integer? g))
+               (app hex->num (? integer? b)) (app hex->num (? integer? a)))
+          (color r g b a)]
+        [_ #f])]
+      [_ #f])]))
 
 ;; attempts to execute a user command; returns #f on success, or an error string on error
 (define/contract (exec-cmd! st cmdstr)
