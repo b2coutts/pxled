@@ -25,9 +25,11 @@
                              (draw-cmd st)]
       [(or 'backspace #\backspace)
         (define strlen (string-length cmd))
-        (when (> strlen 0)
-          (set-state-cmd! st (substring cmd 0 (- strlen 1)))
-          (draw-cmd st))]
+        (cond
+          [(> strlen 0) (set-state-cmd! st (substring cmd 0 (- strlen 1)))
+                        (draw-cmd st)]
+          [else (set-state-cmd! st #f)
+                (draw-cmd st)])]
       [(? char?) (set-state-cmd! st (string-append cmd (~a code)))
                  (draw-cmd st)]
       [_ (void)])]
