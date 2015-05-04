@@ -180,7 +180,7 @@
     [else (string-append "(" cmdstr ")")]))
   (with-handlers ([exn:fail:read? (lambda (e) "Syntax error.")])
     (define ast (with-input-from-string fixstr (thunk (read))))
-    (define usg (get-usage (first ast)))
+    (define usg (match ast [(cons x xs) (get-usage x)] [_ (void)]))
     (match ast
       ;; absolute move
       [(list (or 'amove 'amv) (? integer? a) (? integer? b))
