@@ -1,6 +1,6 @@
 #lang racket
 
-(provide (struct-out state) undo?)
+(provide (struct-out state) undo? state-filename-str)
 
 (require racket/gui/base
          (except-in 2htdp/image make-color make-pen)
@@ -17,7 +17,7 @@
   [width integer?] ;; width in pixels of the image
   [height integer?] ;; height in pixels of the image
   [zoom integer?] ;; displayed width of an image pixel
-  [filename path-string?] ;; filename of image being edited
+  [filename (or/c path-string? #f)] ;; filename of image being edited
   [x integer?] ;; position of cursor
   [y integer?]
   [bmp-dc (is-a?/c bitmap-dc%)] ;; bitmap drawing context
@@ -29,3 +29,10 @@
   [err (or/c string? #f)] ;; error message for user
   [misc hash?] ;; various misc. options
 ) #:mutable #:transparent)
+
+;; get a readable string for the filename
+(define/contract (state-filename-str st)
+  (-> state? path-string?)
+  (match (state-filename st)
+    [(? string? s) s]
+    [#f "[No Name]"]))

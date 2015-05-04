@@ -78,7 +78,7 @@
 (define/contract (load-img! st fname)
   (-> state? path-string? void?)
   (define bmp (make-object bitmap% 1 1 #f #t 1.0))
-  (send bmp load-file (state-filename st) 'unknown #f #t)
+  (send bmp load-file fname 'unknown #f #t)
   (send (state-bmp-dc st) set-bitmap bmp)
   (set-state-filename! st fname)
   (set-state-width! st (send bmp get-width))
@@ -224,16 +224,21 @@
       
       ;; save
       [(cons (or 'save 'sv 'w) args) (match args
-        ['() (save-img st filename) #f]
+        ['() (cond
+          [filename (save-img st filename) #f]
+          [else "You must specify a filename"])]
         [(list (? string? fname)) (save-img st fname) #f]
         [_ usg])]
       
       ;; load/edit
       [(cons (or 'edit 'ed 'e 'edit! 'ed! 'e!) args) (cond
-        [(and (hash-ref misc 'dirty) (member (first ast) '(edit ed e)))
-          (format "~a has unsaved changes. Use ~a! to discard." filename (first ast))]
+        [(and (hash-ref misc 'dirty) (member (first ast) '(edit ed e))) (cond
+          [filename (format "~a has unsaved changes. Use ~a! to discard." filename (first ast))]
+          [else (format "Your file is not saved. Use ~a! to discard." (first ast))])]
         [else (match args
-          ['() (load-img! st filename) #f]
+          ['() (cond
+            [filename (load-img! st filename) #f]
+            [else "You must specify a filename to edit."])]
           [(list (? string? fname)) (load-img! st fname)
                                     #f]
           [_ usg])])]

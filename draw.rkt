@@ -88,7 +88,7 @@
   (cond
     [cmd (render-image (texttt st (string-append ":" cmd "_") cmd-fg) dc 1 ypos)]
     [err (render-image (texttt st err err-fg) dc 1 ypos)]
-    [else (render-image (texttt st (format "~a~a" (state-filename st) modstr)
+    [else (render-image (texttt st (format "~a~a" (state-filename-str st) modstr)
                                 fname-fg) dc 1 ypos)]))
 
 ;; produces the info string, to be drawn at the top of the string
