@@ -17,7 +17,7 @@
 
 ;; some constants for the UI
 (define info/cmd-font-size 14)
-(define info/cmd-height (image-height (text/font "l" info/cmd-font-size "white" "courier" 'modern
+(define info/cmd-height (image-height (text/font "l" info/cmd-font-size "white" "Tamsyn" 'modern
                                                  'normal 'normal #f)))
 (define min-width 300) ;; make sure all usages fit in this width; maybe at least 80 characters?
 (define cmd-bg black)
@@ -31,7 +31,7 @@
   (-> state? string? color? image?)
   (underlay/align "left" "top"
     (rectangle (send (state-cvs st) get-width) info/cmd-height "solid" cmd-bg)
-    (text/font str info/cmd-font-size col "Courier" 'modern 'normal 'normal #f)))
+    (text/font str info/cmd-font-size col "Tamsyn" 'modern 'normal 'normal #f)))
 
 (define/contract (getcol st x y)
   (-> state? integer? integer? color?)
@@ -119,7 +119,7 @@
 ;; draws the info line at the top
 (define/contract (draw-info st)
   (-> state? void?)
-  (define (mktxt strcol) (text/font (car strcol) info/cmd-font-size (cdr strcol) "Courier" 'modern
+  (define (mktxt strcol) (text/font (car strcol) info/cmd-font-size (cdr strcol) "Tamsyn" 'modern
                                     'normal 'normal #f))
   (define img (overlay/align "left" "top"
                 (apply beside (map mktxt (mk-infos st)))
