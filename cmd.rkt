@@ -74,6 +74,22 @@
   (send (send (state-bmp-dc st) get-bitmap) save-file filename 'png)
   (hash-set! (state-misc st) 'dirty #f))
 
+;; loads the given file
+(define/contract (load-img! st fname)
+  (-> state? path-string? void?)
+  (define bmp (make-object bitmap% 1 1 #f #t 1.0))
+  (send bmp load-file (state-filename st) 'unknown #f #t)
+  (send (state-bmp-dc st) set-bitmap bmp)
+  (set-state-filename! st fname)
+  (set-state-width! st (send bmp get-width))
+  (set-state-height! st (send bmp get-height))
+  (set-state-x! st 0)
+  (set-state-y! st 0)
+  (set-state-err! st #f)
+  (hash-set! (state-misc st) 'dirty #f)
+  (draw-all st))
+
+
 ;; change the zoom level
 (define/contract (zoom! st lvl)
   (-> state? integer? void?)
@@ -92,6 +108,8 @@
       [(in '(draw dr)) "[x : int] [y : int] [col : color]. Change color at (x,y) to col."]
       [(in '(fl flood)) "[x : int] [y : int] [col : color]. Flood with col, starting at (x,y)."]
       [(in '(save sv w))  "[fname : string]. Save the current image to fname."]
+      [(in '(edit ed e)) "[fname : string]. Edit the file fname."]
+      [(in '(edit! ed! e!)) "(fname : string). Discard changes to edit a file."]
       [(in '(zoom zo)) "(z : int). Display pixels with a box z px wide."]
       [(in '(r re red))  "(b : byte). Set the red color component to b."]
       [(in '(b bl blu blue))  "(b : byte). Set the blue color component to b."]
@@ -209,6 +227,16 @@
         ['() (save-img st filename) #f]
         [(list (? string? fname)) (save-img st fname) #f]
         [_ usg])]
+      
+      ;; load/edit
+      [(cons (or 'edit 'ed 'e 'edit! 'ed! 'e!) args) (cond
+        [(and (hash-ref misc 'dirty) (member (first ast) '(edit ed e)))
+          (format "~a has unsaved changes. Use ~a! to discard." filename (first ast))]
+        [else (match args
+          ['() (load-img! st filename) #f]
+          [(list (? string? fname)) (load-img! st fname)
+                                    #f]
+          [_ usg])])]
 
       ;; zoom
       [(cons (or 'zoom 'zo) args) (match args

@@ -28,6 +28,7 @@
 (send cvs set-canvas-background bgcolor)
 (send (send cvs get-dc) set-background bgcolor)
 (send frm show #t)
+(send cvs focus)
 
 (define bmp (make-object bitmap% width height #f #t))
 (define bmp-dc (new bitmap-dc% [bitmap bmp]))
@@ -42,8 +43,8 @@
 (printf "bmp-dc at (2,2) is ~a\n" (conv tmpcol))
 
 (define misc (make-hash '(
-  [show-cursor #t]
-  [dirty #t]
+  [show-cursor . #t]
+  [dirty . #t]
 )))
 
 ;; TODO: unhardcode this stuff
