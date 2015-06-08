@@ -239,7 +239,11 @@
         ['() (cond
           [filename (save-img st filename) #f]
           [else "You must specify a filename"])]
-        [(list (? string? fname)) (save-img st fname) #f]
+        [(list (? string? fname))
+          (unless filename
+            (set-state-filename! st fname))
+          (save-img st fname)
+          #f]
         [_ usg])]
       
       ;; load/edit
