@@ -182,6 +182,20 @@
     [(app string->number (? integer? i)) i]
     [x x]))
 
+;; executes a piece of user code
+;; TODO: maybe sandbox their code somehow?
+(define/contract (exec-user-code code)
+  (-> string? (or/c (cons 'fail string?) (cons 'success any/c)))
+  (define ast
+    (with-handlers ([exn:fail:read?
+                      (lambda (e) (cons 'fail (format "Parse error: ~a" (exn-message e))))])
+      (with-input-from-string code (thunk (read)))))
+  (match ast
+    [(cons 'fail _) ast]
+    [_ (with-handlers ([exn:fail? (lambda (e) (cons 'fail (format "Execution failed: ~a"
+                                                                  (exn-message e))))])
+        (cons 'success (eval ast)))]))
+
 ;; attempts to execute a user command; returns #f on success, or an error string on error
 (define/contract (exec-cmd! st cmdstr)
   (-> state? string? (or/c string? #f))
