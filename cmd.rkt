@@ -167,45 +167,57 @@
         (mv-cursor! st x y)
         (undo! st (- n 1))])))
 
+;; attempts to parse a string as an integer or a color; returns the string itself on failure
+(define/contract (try-parse str)
+  (-> string? (or/c string? color? integer?))
+  (match str
+    [(regexp "#(..)(..)(..)" (list _ (app hex->num (? integer? r))
+                                     (app hex->num (? integer? g))
+                                     (app hex->num (? integer? b))))
+      (color r g b 255)]
+    [(regexp "0x(..)(..)(..)(..)"
+        (list _ (app hex->num (? integer? r)) (app hex->num (? integer? g))
+                (app hex->num (? integer? b)) (app hex->num (? integer? a))))
+      (color r g b a)]
+    [(app string->number (? integer? i)) i]
+    [x x]))
+
 ;; attempts to execute a user command; returns #f on success, or an error string on error
 (define/contract (exec-cmd! st cmdstr)
   (-> state? string? (or/c string? #f))
   (printf "DEBUG: exec-cmd!: cmdstr is: ~s\n" cmdstr)
   (match-define (state cvs width height zoom filename x y bmp-dc show-cursor? brushes curbrush
-                       undos cmd err misc) st)
-  (printf "dirty is ~a\n" (hash-ref misc 'dirty))
+                       undos scmd err misc) st)
   (define brush-col (vector-ref brushes curbrush))
-  (define fixstr (cond
-    [(or (< (string-length cmdstr) 1) (equal? (substring cmdstr 0 1) "(")) cmdstr]
-    [else (string-append "(" cmdstr ")")]))
-  (with-handlers ([exn:fail:read? (lambda (e) "Syntax error.")])
-    (define ast (with-input-from-string fixstr (thunk (read))))
-    (define usg (match ast [(cons x xs) (get-usage x)] [_ (void)]))
-    (match ast
+  (define words (map try-parse (string-split cmdstr " ")))
+  (define cmd (if (empty? words) #f (first words)))
+  (with-handlers () ;; placeholder for handling user draw errors
+    (define usg (if cmd (get-usage cmd) #f))
+    (match words
       ;; absolute move
-      [(list (or 'amove 'amv) (? integer? a) (? integer? b))
+      [(list (or "amove" "amv") (? integer? a) (? integer? b))
         (mv-cursor! st a b) #f]
-      [(cons (or 'amove 'amv) _) usg]
+      [(cons (or "amove" "amv") _) usg]
 
       ;; relative move
-      [(list (or 'move 'mv) (? integer? a) (? integer? b))
+      [(list (or "move" "mv") (? integer? a) (? integer? b))
         (mv-cursor! st (+ x a) (+ y b)) #f]
-      [(cons (or 'move 'mv) _) usg]
+      [(cons (or "move" "mv") _) usg]
 
       ;; draw
-      [(cons (or 'draw 'dr 'flood 'fl) args)
+      [(cons (or "draw" "dr" "flood" "fl") args)
         (define-values (a b col) (match args
           ['() (values x y brush-col)]
           [(list (? integer? a)) (values a y brush-col)]
           [(list (? integer? a) (? integer? b)) (values a b brush-col)]
-          [(list (? integer? a) (? integer? b) (app ast->color (? color? col))) (values a b col)]
+          [(list (? integer? a) (? integer? b) (? color? col)) (values a b col)]
           [_ (values #f #f #f)]))
 
         (define ccol (if a (getcol st a b) (void)))
         (cond
           [(not a) usg]
           ;; single point draw
-          [(member (first ast) '(draw dr))
+          [(member cmd '("draw" "dr"))
             (set-state-undos! st (cons (list 'single a b ccol) undos))
             (send bmp-dc set-pixel a b (cc col))
             (hash-set! misc 'dirty #t)
@@ -223,7 +235,7 @@
                 #f])]
       
       ;; save
-      [(cons (or 'save 'sv 'w) args) (match args
+      [(cons (or "save" "sv" "w") args) (match args
         ['() (cond
           [filename (save-img st filename) #f]
           [else "You must specify a filename"])]
@@ -231,10 +243,10 @@
         [_ usg])]
       
       ;; load/edit
-      [(cons (or 'edit 'ed 'e 'edit! 'ed! 'e!) args) (cond
-        [(and (hash-ref misc 'dirty) (member (first ast) '(edit ed e))) (cond
-          [filename (format "~a has unsaved changes. Use ~a! to discard." filename (first ast))]
-          [else (format "Your file is not saved. Use ~a! to discard." (first ast))])]
+      [(cons (or "edit" "ed" "e" "edit!" "ed!" "e!") args) (cond
+        [(and (hash-ref misc 'dirty) (member cmd '("edit" "ed" "e"))) (cond
+          [filename (format "~a has unsaved changes. Use ~a! to discard." filename cmd)]
+          [else (format "Your file is not saved. Use ~a! to discard." cmd)])]
         [else (match args
           ['() (cond
             [filename (load-img! st filename) #f]
@@ -244,32 +256,32 @@
           [_ usg])])]
 
       ;; zoom
-      [(cons (or 'zoom 'zo) args) (match args
-        ['(in) (zoom! st (+ zoom 1)) #f]
-        ['(out) (when (> zoom 1)
+      [(cons (or "zoom" "zo") args) (match args
+        ['("in") (zoom! st (+ zoom 1)) #f]
+        ['("out") (when (> zoom 1)
                   (zoom! st (- zoom 1)))
                 #f]
         [(list (? exact-positive-integer? i)) (zoom! st i) #f]
         [_ usg])]
 
       ;; adjust individual colours
-      [(cons (and (or 'r 're 'red 'b 'bl 'blu 'blue 'g 'gr 'gre 'gree 'green
-                      'a 'al 'alp 'alph 'alpha) col) args) (match args
+      [(cons (and (or "r" "re" "red" "b" "bl" "blu" "blue" "g" "gr" "gre" "gree" "green"
+                      "a" "al" "alp" "alph" "alpha") col) args) (match args
         [(list (? byte? byte))
           (match-define (color r g b a) brush-col)
           (vector-set! brushes curbrush (color
-            (if (member col '(r re red)) byte r)
-            (if (member col '(g gr gre gree green)) byte g)
-            (if (member col '(b bl blu blue)) byte b)
-            (if (member col '(a al alp alph alpha)) byte a)))
+            (if (member col '("r" "re" "red")) byte r)
+            (if (member col '("g" "gr" "gre" "gree" "green")) byte g)
+            (if (member col '("b" "bl" "blu" "blue")) byte b)
+            (if (member col '("a" "al" "alp" "alph" "alpha")) byte a)))
           (draw-info st)
           (draw-cursor st)
           #f]
         [else usg])]
 
       ;; adjust all colours, simultaneously
-      [(cons (or 'co 'color) args) (match args
-        [(list (app ast->color (? color? col)))
+      [(cons (or "co" "color") args) (match args
+        [(list (? color? col))
           (vector-set! brushes curbrush col)
           (draw-info st)
           (draw-cursor st)
@@ -277,7 +289,7 @@
         [_ usg])]
 
       ;; set cursor visibility
-      [(cons (or 'tc 'toggle-cursor) args) (match args
+      [(cons (or "tc" "toggle-cursor") args) (match args
         ['() (hash-set! misc 'show-cursor (not (hash-ref misc 'show-cursor)))
              (draw-pixel st x y)
              (draw-cursor st)
@@ -289,11 +301,11 @@
         [_ usg])]
 
       ;; undo last draw action
-      [(cons (or 'un 'undo) args) (match args
+      [(cons (or "un" "undo") args) (match args
         ['() (undo! st 1) #f]
         [(list (? exact-nonnegative-integer? n)) (undo! st n) #f]
         [_ usg])]
 
       ;; command not found
-      [(list nm) (format "Command not found: ~a" nm)]
-      [_ (format "Invalid command: ~a" ast)])))
+      [(cons nm _) (format "Command not found: ~a" nm)]
+      [_ (format "Invalid command: ~a" cmdstr)])))
