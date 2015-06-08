@@ -25,7 +25,7 @@
   [brushes (vectorof color?)] ;; vector of brush colors
   [curbrush integer?] ;; index into above vector
   [undos (listof undo?)] ;; stack of undo actions to be done
-  [cmd (or/c string? #f)] ;; user command handler
+  [cmd (or/c string? #f)] ;; currently typed-in user command
   [err (or/c string? #f)] ;; error message for user
   [misc hash?] ;; various misc. options
 ) #:mutable #:transparent)
