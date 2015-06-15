@@ -34,5 +34,6 @@
     [`(#\D ,_) "flood"]
     [`(#\c #f) "toggle-cursor"]
     [`(#\u #f) "undo"]
+    [(list (or #\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9) _) (format "brush ~a" code)]
     ;[`(#\s ,_) "save"]
     [_ #f]))

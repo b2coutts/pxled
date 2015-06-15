@@ -306,6 +306,14 @@
           #f]
         [_ usg])]
 
+      ;; change current brush
+      [(cons (or "br" "brush") args) (match args
+        [(list (? (integer-in 0 9) n)) (set-state-curbrush! st n)
+                                       (draw-info st)
+                                       (draw-cursor st)
+                                       #f]
+        [_ usg])]
+
       ;; set cursor visibility
       [(cons (or "tc" "toggle-cursor") args) (match args
         ['() (hash-set! misc 'show-cursor (not (hash-ref misc 'show-cursor)))
