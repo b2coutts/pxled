@@ -116,6 +116,7 @@
       [(in '(g gr gre gree green))  "(b : byte). Set the green color component to b."]
       [(in '(a al alp alph alpha))  "(b : byte). Set the alpha component to b."]
       [(in '(co color)) "(col : color). Set the color of the current brush."]
+      [(in '(br brush)) "(br : 0..9). Set the current brush."]
       [(in '(tc toggle-cursor)) "[v : boolean]. Toggle visibility of the cursor."]
       [(in '(un undo)) "[n : int]. Undo last n actions."]
       [else #f]))
