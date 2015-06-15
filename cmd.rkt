@@ -307,6 +307,13 @@
           #f]
         [_ usg])]
 
+      ;; change current brush colour to colour under cursor
+      [(cons (or "sa" "sample") args)
+        (vector-set! brushes curbrush (getcol st x y))
+        (draw-info st)
+        (draw-cursor st)
+        #f]
+
       ;; change current brush
       [(cons (or "br" "brush") args) (match args
         [(list (? (integer-in 0 9) n)) (set-state-curbrush! st n)
