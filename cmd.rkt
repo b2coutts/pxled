@@ -185,7 +185,7 @@
 ;; executes a piece of user code
 ;; TODO: maybe sandbox their code somehow?
 (define/contract (exec-user-code code)
-  (-> string? (or/c (cons 'fail string?) (cons 'success any/c)))
+  (-> string? (or/c (cons/c 'fail string?) (cons/c 'success any/c)))
   (define ast
     (with-handlers ([exn:fail:read?
                       (lambda (e) (cons 'fail (format "Parse error: ~a" (exn-message e))))])
