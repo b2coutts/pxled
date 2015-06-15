@@ -100,7 +100,7 @@
 ;; provides a usage string for the given command, produces false if no such command exists
 (define/contract (get-usage cmd)
   (-> any/c string?)
-  (define in (curry member cmd))
+  (define in (curry member (string->symbol cmd)))
   (define msg
     (cond
       [(in '(amove amv)) "(x : int) (y : int). Move cursor to (x,y)."]
